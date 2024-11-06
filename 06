@@ -1,0 +1,40 @@
+import pandas as pd
+import numpy as np
+# 1D Data Aggregation
+data_1d = pd.Series([0.374540, 0.950714, 0.731994, 0.598658, 0.156019])
+print("1. Aggregation of 1D")
+print(data_1d)
+print("Sum =", data_1d.sum())
+print("Mean =", data_1d.mean())
+print("Count =", data_1d.count())
+print("Minimum =", data_1d.min())
+print("Maximum =", data_1d.max())
+# 2D Data Aggregation
+data_2d = pd.DataFrame({
+    'A': [0.183405, 0.304242, 0.524756, 0.431945, 0.291229],
+    'B': [0.611853, 0.139494, 0.292145, 0.366362, 0.456070]
+})
+print("\n2. Aggregation of 2D")
+print(data_2d)
+print("\nSum (Columnwise):")
+print(data_2d.sum())
+print("\nSum (Rowwise):")
+print(data_2d.sum(axis=1))
+print("\nMean:")
+print(data_2d.mean())
+print("\nCount:")
+print(data_2d.count())
+print("\nMinimum:")
+print(data_2d.min())
+print("\nMaximum:")
+print(data_2d.max())
+# n-D Data Aggregation (Loading 'planets.csv' from a correct online source)
+data_nd = pd.read_csv('https://raw.githubusercontent.com/mwaskom/seaborn-data/master/planets.csv')
+print("\n3. Aggregation of n-D data")
+print("Shape or Size:", data_nd.shape)
+# Grouping by 'method' and 'orbital_period'
+grouped_data = data_nd.groupby(['method', 'orbital_period'])
+print("\nStatistical values based on 'Method' and 'year':")
+print(grouped_data['year'].describe())
+print("\nStandard Deviation based on 'Method':")
+print(grouped_data['year'].std())
