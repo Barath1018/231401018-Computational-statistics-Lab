@@ -1,0 +1,46 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn import datasets
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
+# Load the Iris dataset
+iris = datasets.load_iris()
+X = iris.data
+y = iris.target
+target_names = iris.target_names
+
+# Convert to DataFrame for better visualization
+iris_df = pd.DataFrame(data=X, columns=iris.feature_names)
+iris_df['target'] = y
+
+# 1. Standardize the data
+scaler = StandardScaler()
+X_std = scaler.fit_transform(X)
+print("Standardized data:\n", X_std[:7])  # Display the first 7 standardized data points
+
+# 2. Make the PCA with n=2
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_std)
+
+# PCA results for the given dataset
+print("\nPCA for the given dataset:\n", X_pca[:7])  # Display the first 7 PCA transformed data points
+
+# 3. Plot the data with the new principal components
+plt.figure(figsize=(10, 6))
+colors = ['navy', 'turquoise', 'darkorange']
+lw = 2
+
+for color, i, target_name in zip(colors, [0, 1, 2], target_names):
+    plt.scatter(X_pca[y == i, 0], X_pca[y == i, 1], color=color, alpha=.8, lw=lw,
+                label=target_name)
+plt.title('2 component PCA')
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.legend(loc='best', shadow=False, scatterpoints=1)
+plt.show()
+
+# 4. Display the variance among the 2 components
+explained_variance = pca.explained_variance_ratio_
+print("Variance Ratio:", explained_variance)
