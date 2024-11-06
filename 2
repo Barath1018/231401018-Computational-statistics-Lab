@@ -8,7 +8,7 @@ print("\n2. Print the total number of rows and columns:")
 print(f"({num_rows}, {num_columns})")
 print("\n3. Print the column names [Attribute Names] of the dataset:")
 print(df.columns.tolist())
-mean_values = df.mean(numeric_only=True)
+mean_values = df.select_dtypes(include='number').mean()
 print("\n4. Mean of all numerical attributes with 15 decimal places:")
 for column, mean in mean_values.items():
     print(f"{column}-Mean={mean:.15f}")
