@@ -1,45 +1,197 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
-import yfinance as yf
+from flask import Flask, render_template_string, request, redirect, url_for, flash
+import sqlite3
+app = Flask(__name__)
+app.secret_key = "your_secret_key"  # For session management and flashing messages
+def init_db():
+    conn = sqlite3.connect('stock_market.db')
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS stocks (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        stock_symbol TEXT NOT NULL,
+                        company_name TEXT NOT NULL,
+                        prediction REAL NOT NULL,
+                        confidence REAL NOT NULL
+                    )''')
+    conn.commit()
+    conn.close()
+@app.route('/')
+def index():
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Stock Market Prediction System</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f4;
+                padding: 50px;
+                text-align: center;
+            }
+            h1 {
+                color: #333;
+            }
+            .container {
+                background-color: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            a {
+                display: inline-block;
+                margin-top: 20px;
+                background-color: #4CAF50;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 4px;
+                text-decoration: none;
+            }
+            a:hover {
+                background-color: #45a049;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Welcome to the Stock Market Prediction System</h1>
+            <a href="{{ url_for('dashboard') }}">Go to Dashboard</a>
+        </div>
+    </body>
+    </html>
+    ''')
+@app.route('/dashboard', methods=['GET', 'POST'])
+def dashboard():
+    if request.method == 'POST':
+        stock_symbol = request.form['stock_symbol']
+        company_name = request.form['company_name']
+        prediction = request.form['prediction']
+        confidence = request.form['confidence']
 
-# Load stock data using Yahoo Finance (e.g., Apple stock)
-stock_data = yf.download('AAPL', start='2020-01-01', end='2023-01-01')
+        conn = sqlite3.connect('stock_market.db')
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO stocks (stock_symbol, company_name, prediction, confidence) VALUES (?, ?, ?, ?)",
+                       (stock_symbol, company_name, float(prediction), float(confidence)))
+        conn.commit()
+        conn.close()
+        flash('Stock prediction added successfully!')
+        return redirect(url_for('dashboard'))
+    conn = sqlite3.connect('stock_market.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM stocks")
+    stocks = cursor.fetchall()
+    conn.close()
 
-# Display the first few rows
-print("Data Head:\n", stock_data.head())
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dashboard - Stock Market Prediction</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f4;
+                padding: 50px;
+                text-align: center;
+            }
+            h1 {
+                color: #333;
+            }
+            .container {
+                background-color: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+            table, th, td {
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: left;
+            }
+            th {
+                background-color: #f2f2f2;
+            }
+            form input, form button {
+                padding: 10px;
+                margin: 5px;
+                border-radius: 4px;
+            }
+            form input {
+                width: 200px;
+            }
+            .flash {
+                background-color: #4CAF50;
+                color: white;
+                padding: 10px;
+                margin: 20px 0;
+                border-radius: 4px;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Stock Dashboard</h1>
+            <form method="POST">
+                <input type="text" name="stock_symbol" placeholder="Stock Symbol" required>
+                <input type="text" name="company_name" placeholder="Company Name" required>
+                <input type="number" step="0.01" name="prediction" placeholder="Prediction Price" required>
+                <input type="number" step="0.01" name="confidence" placeholder="Confidence (%)" required>
+                <button type="submit">Add Stock</button>
+            </form>
 
-# Feature Engineering: Calculate moving average as a feature
-stock_data['10_day_MA'] = stock_data['Close'].rolling(window=10).mean()
-stock_data.dropna(inplace=True)  # Drop rows with NaN values due to rolling window
-
-# Define features and target variable
-X = stock_data[['10_day_MA']]  # Feature: 10-day moving average
-y = stock_data['Close']         # Target: Closing price
-
-# Split the data into train and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Train a linear regression model
-model = LinearRegression()
-model.fit(X_train, y_train)
-
-# Make predictions
-y_pred = model.predict(X_test)
-
-# Plot actual vs predicted prices
-plt.figure(figsize=(10, 5))
-plt.plot(y_test.index, y_test, label='Actual Price')
-plt.plot(y_test.index, y_pred, label='Predicted Price')
-plt.xlabel('Date')
-plt.ylabel('Stock Price')
-plt.title('Actual vs Predicted Stock Prices')
-plt.legend()
-plt.show()
-
-# Model evaluation
-mse = mean_squared_error(y_test, y_pred)
-print(f"Mean Squared Error: {mse:.2f}")
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="flash">{{ messages[0] }}</div>
+                {% endif %}
+            {% endwith %}
+           
+            <h2>Stocks List</h2>
+            <table>
+                <tr>
+                    <th>ID</th>
+                    <th>Stock Symbol</th>
+                    <th>Company Name</th>
+                    <th>Prediction</th>
+                    <th>Confidence</th>
+                    <th>Action</th>
+                </tr>
+                {% for stock in stocks %}
+                <tr>
+                    <td>{{ stock[0] }}</td>
+                    <td>{{ stock[1] }}</td>
+                    <td>{{ stock[2] }}</td>
+                    <td>{{ stock[3] }}</td>
+                    <td>{{ stock[4] }}</td>
+                    <td>
+                        <form action="{{ url_for('delete_stock', stock_id=stock[0]) }}" method="POST">
+                            <button type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </body>
+    </html>
+    ''', stocks=stocks)
+@app.route('/delete/<int:stock_id>', methods=['POST'])
+def delete_stock(stock_id):
+    conn = sqlite3.connect('stock_market.db')
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM stocks WHERE id = ?", (stock_id,))
+    conn.commit()
+    conn.close()
+    flash('Stock deleted successfully!')
+    return redirect(url_for('dashboard'))
+if __name__ == '__main__':
+    init_db()  # Initialize the database
+    app.run(debug=True)
